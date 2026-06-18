@@ -121,31 +121,81 @@ function renderChart(rows) {
   });
 }
 
-function renderTradingView() {
-  if (typeof TradingView === "undefined") return;
-  // eslint-disable-next-line no-new, no-undef
-  new TradingView.widget({
-    container_id: "tv-chart",
-    symbol: "BITSTAMP:BTCUSD",
-    interval: "D",
-    autosize: true,
-    timezone: "America/Sao_Paulo",
-    theme: "dark",
-    style: "1",
-    locale: "br",
-    hide_side_toolbar: true,
-    allow_symbol_change: true,
-    studies: [],
+async function fetchBTCCandles() {
+  try {
+    const res = await fetch(
+      "https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=365",
+      { cache: "no-store" }
+    );
+    if (!res.ok) return [];
+    const raw = await res.json();
+    return raw.map(([ts, o, h, l, c]) => ({
+      time: new Date(ts).toISOString().slice(0, 10),
+      open: parseFloat(o),
+      high: parseFloat(h),
+      low: parseFloat(l),
+      close: parseFloat(c),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function renderLightweightChart(rows, candles) {
+  const container = document.getElementById("tv-chart");
+  // eslint-disable-next-line no-undef
+  if (typeof LightweightCharts === "undefined" || !container) return;
+
+  // eslint-disable-next-line no-undef
+  const chart = LightweightCharts.createChart(container, {
+    width: container.clientWidth,
+    height: container.clientHeight || 480,
+    layout: { background: { color: "#141B22" }, textColor: "#8B95A1" },
+    grid: { vertLines: { color: "#232A33" }, horzLines: { color: "#232A33" } },
+    // eslint-disable-next-line no-undef
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    rightPriceScale: { borderColor: "#232A33" },
+    timeScale: { borderColor: "#232A33", timeVisible: false },
   });
+
+  new ResizeObserver(() => {
+    chart.applyOptions({ width: container.clientWidth });
+  }).observe(container);
+
+  if (candles.length) {
+    const cs = chart.addCandlestickSeries({
+      upColor: "#26a69a",
+      downColor: "#ef5350",
+      borderVisible: false,
+      wickUpColor: "#26a69a",
+      wickDownColor: "#ef5350",
+    });
+    cs.setData(candles);
+  }
+
+  const costRows = rows.filter((r) => r.date && r.production_cost_usd);
+  if (costRows.length) {
+    const ls = chart.addLineSeries({
+      color: "#FFB000",
+      lineWidth: 2,
+      title: "Custo energia",
+      priceLineVisible: false,
+      lastValueVisible: true,
+      crosshairMarkerVisible: false,
+    });
+    ls.setData(costRows.map((r) => ({ time: r.date, value: parseFloat(r.production_cost_usd) })));
+  }
+
+  chart.timeScale().fitContent();
 }
 
 (async function init() {
-  renderTradingView();
   try {
-    const [rows, spot] = await Promise.all([loadSeries(), fetchSpot()]);
+    const [rows, spot, candles] = await Promise.all([loadSeries(), fetchSpot(), fetchBTCCandles()]);
     if (!rows.length) throw new Error("série vazia");
     renderCards(rows);
     renderChart(rows);
+    renderLightweightChart(rows, candles);
     renderFloor(parseFloat(rows[rows.length - 1].production_cost_usd), spot);
   } catch (err) {
     setText("updated", "erro ao carregar dados");
