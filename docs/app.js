@@ -3,6 +3,13 @@
 const CSV_URL = "./data/btc_production_cost.csv";
 const SPOT_URL = "https://api.coinbase.com/v2/prices/BTC-USD/spot";
 
+const HALVINGS = [
+  { date: "2012-11-28", label: "Halving 2012" },
+  { date: "2016-07-09", label: "Halving 2016" },
+  { date: "2020-05-11", label: "Halving 2020" },
+  { date: "2024-04-20", label: "Halving 2024" },
+];
+
 const fmtUSD = (n, max = 0) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "USD", maximumFractionDigits: max }).format(n);
 
@@ -100,8 +107,33 @@ function renderChart(rows, candles) {
   const priceMap = new Map((candles || []).map((c) => [c.time, c.close]));
   const btcPrice = labels.map((d) => priceMap.get(d) ?? null);
 
+  const halvingPlugin = {
+    id: "halvings",
+    afterDraw(chart) {
+      const { ctx, scales: { x: xScale, y: yScale }, data: { labels } } = chart;
+      HALVINGS.forEach(({ date, label }) => {
+        const idx = labels.indexOf(date);
+        if (idx === -1) return;
+        const px = xScale.getPixelForValue(idx);
+        ctx.save();
+        ctx.beginPath();
+        ctx.strokeStyle = "#FF5C5C";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 3]);
+        ctx.moveTo(px, yScale.top);
+        ctx.lineTo(px, yScale.bottom);
+        ctx.stroke();
+        ctx.fillStyle = "#FF5C5C";
+        ctx.font = '10px "IBM Plex Mono", monospace';
+        ctx.fillText(label, px + 4, yScale.top + 14);
+        ctx.restore();
+      });
+    },
+  };
+
   // eslint-disable-next-line no-undef
   new Chart(document.getElementById("costChart"), {
+    plugins: [halvingPlugin],
     type: "line",
     data: {
       labels,
@@ -211,6 +243,18 @@ function renderLightweightChart(rows, candles) {
       wickDownColor: "#ef5350",
     });
     cs.setData(candles);
+    const candleTimes = new Set(candles.map((c) => c.time));
+    const markers = HALVINGS
+      .filter((h) => candleTimes.has(h.date))
+      .map((h) => ({
+        time: h.date,
+        position: "belowBar",
+        color: "#FF5C5C",
+        shape: "arrowUp",
+        text: h.label,
+        size: 1,
+      }));
+    if (markers.length) cs.setMarkers(markers);
   }
 
   const costRows = rows.filter((r) => r.date && r.production_cost_usd);
