@@ -103,16 +103,22 @@ function renderFearGreed(fng) {
   if (!fng) {
     setText("fng-value", "—");
     setText("fng-class", "indisponível");
+    setText("topbar-fng-val", "—");
+    setText("topbar-fng-class", "");
     return;
   }
   const { value, classification } = fng;
   setText("fng-value", value);
   setText("fng-class", classification);
-  document.getElementById("fng-needle").style.left = value + "%";
-  const signal = document.getElementById("fng-signal");
+  setText("topbar-fng-val", value);
+  setText("topbar-fng-class", classification);
+  const needle = document.getElementById("fng-needle");
+  if (needle) needle.style.left = value + "%";
   if (value <= FNG_BUY_THRESHOLD) {
-    signal.textContent = "ZONA DE COMPRA";
-    signal.classList.add("fng-signal--active");
+    const signal = document.getElementById("fng-signal");
+    if (signal) { signal.textContent = "ZONA DE COMPRA"; signal.classList.add("fng-signal--active"); }
+    const tv = document.getElementById("topbar-fng-val");
+    if (tv) tv.classList.add("topbar__fng-val--buy");
   }
 }
 
@@ -338,7 +344,7 @@ function renderLightweightChart(rows, candles) {
         lastValueVisible: false,
         priceLineVisible: false,
       });
-      chart.priceScale("bz").applyOptions({ scaleMargins: { top: 0.93, bottom: 0 }, visible: false });
+      bzSeries.priceScale().applyOptions({ scaleMargins: { top: 0.93, bottom: 0 }, visible: false });
       bzSeries.setData(bzData);
     }
   }
@@ -368,10 +374,10 @@ function renderLightweightChart(rows, candles) {
     const [rows, spot, candles, fng] = await Promise.all([loadSeries(), fetchSpot(), fetchBTCCandles(), fetchFearGreed()]);
     if (!rows.length) throw new Error("série vazia");
     renderCards(rows);
-    renderChart(rows, candles);
-    renderLightweightChart(rows, candles);
     renderFloor(parseFloat(rows[rows.length - 1].production_cost_usd), spot);
     renderFearGreed(fng);
+    try { renderChart(rows, candles); } catch (e) { console.error("renderChart:", e); }
+    try { renderLightweightChart(rows, candles); } catch (e) { console.error("renderLWC:", e); }
   } catch (err) {
     setText("updated", "erro ao carregar dados");
     setText("cost", "—");
