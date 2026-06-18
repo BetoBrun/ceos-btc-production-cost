@@ -94,10 +94,9 @@ function renderChart(rows, candles) {
   const rows5 = rows.filter((r) => r.date >= cutStr);
 
   const labels = rows5.map((r) => r.date);
-  const rawCost = rows5.map((r) => parseFloat(r.production_cost_usd));
-  const smoothCost = movingAvg(rawCost, 30); // MA30 remove ruido diario do hashrate
+  const rawCost  = rows5.map((r) => parseFloat(r.production_cost_usd));
 
-  // Preco BTC: fecha diario das velas (candles ja vem ordenadas)
+  // Preco BTC: fecha diario das velas
   const priceMap = new Map((candles || []).map((c) => [c.time, c.close]));
   const btcPrice = labels.map((d) => priceMap.get(d) ?? null);
 
@@ -119,14 +118,14 @@ function renderChart(rows, candles) {
           order: 1,
         },
         {
-          label: "Custo de producao MA30 (energia)",
-          data: smoothCost,
+          label: "Custo real CBECI (diario)",
+          data: rawCost,
           borderColor: "#FFB000",
-          backgroundColor: "rgba(255,176,0,0.10)",
-          borderWidth: 2.5,
+          backgroundColor: "rgba(255,176,0,0.07)",
+          borderWidth: 1.5,
           fill: true,
           pointRadius: 0,
-          tension: 0.18,
+          tension: 0,
           order: 2,
         },
       ],
