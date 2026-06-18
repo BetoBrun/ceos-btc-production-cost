@@ -27,10 +27,11 @@ jobs:
 
       - name: Run updater
         env:
+          DATA_MODE: ${{ vars.DATA_MODE || 'compute' }}
           ENERGY_PRICE_USD_KWH: ${{ vars.ENERGY_PRICE_USD_KWH || '0.05' }}
           CBECI_DATA_URL: ${{ vars.CBECI_DATA_URL || '' }}
           CBECI_DATE_COL: ${{ vars.CBECI_DATE_COL || 'Date and Time' }}
-          CBECI_POWER_GW_COL: ${{ vars.CBECI_POWER_GW_COL || 'power GW, guess' }}
+          CBECI_POWER_GW_COL: ${{ vars.CBECI_POWER_GW_COL || 'power_gw' }}
         run: python scripts/update_production_cost.py
 
       - name: Commit if changed
