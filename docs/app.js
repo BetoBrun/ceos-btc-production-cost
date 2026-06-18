@@ -78,25 +78,56 @@ function renderCards(rows) {
   setText("updated", "atualizado " + last.date + (last.source === "demo" ? " · DEMO" : ""));
 }
 
-function renderChart(rows) {
-  const ctx = document.getElementById("costChart");
-  const labels = rows.map((r) => r.date);
-  const data = rows.map((r) => parseFloat(r.production_cost_usd));
+function movingAvg(arr, window) {
+  return arr.map((_, i) => {
+    const start = Math.max(0, i - window + 1);
+    const slice = arr.slice(start, i + 1).filter((v) => v != null && isFinite(v));
+    return slice.length ? slice.reduce((s, v) => s + v, 0) / slice.length : null;
+  });
+}
+
+function renderChart(rows, candles) {
+  // Filtrar ultimos 5 anos
+  const cutoff = new Date();
+  cutoff.setFullYear(cutoff.getFullYear() - 5);
+  const cutStr = cutoff.toISOString().slice(0, 10);
+  const rows5 = rows.filter((r) => r.date >= cutStr);
+
+  const labels = rows5.map((r) => r.date);
+  const rawCost = rows5.map((r) => parseFloat(r.production_cost_usd));
+  const smoothCost = movingAvg(rawCost, 30); // MA30 remove ruido diario do hashrate
+
+  // Preco BTC: fecha diario das velas (candles ja vem ordenadas)
+  const priceMap = new Map((candles || []).map((c) => [c.time, c.close]));
+  const btcPrice = labels.map((d) => priceMap.get(d) ?? null);
+
   // eslint-disable-next-line no-undef
-  new Chart(ctx, {
+  new Chart(document.getElementById("costChart"), {
     type: "line",
     data: {
       labels,
       datasets: [
         {
-          label: "Custo de produção (energia) USD",
-          data,
+          label: "Preco BTC (USD)",
+          data: btcPrice,
+          borderColor: "#4DD0C4",
+          backgroundColor: "transparent",
+          borderWidth: 1.5,
+          fill: false,
+          pointRadius: 0,
+          tension: 0.12,
+          order: 1,
+        },
+        {
+          label: "Custo de producao MA30 (energia)",
+          data: smoothCost,
           borderColor: "#FFB000",
           backgroundColor: "rgba(255,176,0,0.10)",
-          borderWidth: 2,
+          borderWidth: 2.5,
           fill: true,
           pointRadius: 0,
           tension: 0.18,
+          order: 2,
         },
       ],
     },
@@ -105,13 +136,16 @@ function renderChart(rows) {
       maintainAspectRatio: false,
       interaction: { mode: "index", intersect: false },
       plugins: {
-        legend: { display: false },
+        legend: {
+          display: true,
+          labels: { color: "#8B95A1", usePointStyle: true, pointStyleWidth: 12, padding: 20 },
+        },
         tooltip: {
-          callbacks: { label: (c) => fmtUSD(c.parsed.y) },
+          callbacks: { label: (c) => `${c.dataset.label}: ${fmtUSD(c.parsed.y)}` },
         },
       },
       scales: {
-        x: { ticks: { color: "#8B95A1", maxTicksLimit: 6 }, grid: { color: "#232A33" } },
+        x: { ticks: { color: "#8B95A1", maxTicksLimit: 8 }, grid: { color: "#232A33" } },
         y: {
           ticks: { color: "#8B95A1", callback: (v) => fmtUSD(v) },
           grid: { color: "#232A33" },
@@ -182,15 +216,21 @@ function renderLightweightChart(rows, candles) {
 
   const costRows = rows.filter((r) => r.date && r.production_cost_usd);
   if (costRows.length) {
+    const rawVals = costRows.map((r) => parseFloat(r.production_cost_usd));
+    const smoothVals = movingAvg(rawVals, 30);
     const ls = chart.addLineSeries({
       color: "#FFB000",
       lineWidth: 2,
-      title: "Custo energia",
+      title: "Custo MA30",
       priceLineVisible: false,
       lastValueVisible: true,
       crosshairMarkerVisible: false,
     });
-    ls.setData(costRows.map((r) => ({ time: r.date, value: parseFloat(r.production_cost_usd) })));
+    ls.setData(
+      costRows
+        .map((r, i) => ({ time: r.date, value: smoothVals[i] }))
+        .filter((p) => p.value != null)
+    );
   }
 
   chart.timeScale().fitContent();
@@ -201,7 +241,7 @@ function renderLightweightChart(rows, candles) {
     const [rows, spot, candles] = await Promise.all([loadSeries(), fetchSpot(), fetchBTCCandles()]);
     if (!rows.length) throw new Error("série vazia");
     renderCards(rows);
-    renderChart(rows);
+    renderChart(rows, candles);
     renderLightweightChart(rows, candles);
     renderFloor(parseFloat(rows[rows.length - 1].production_cost_usd), spot);
   } catch (err) {
