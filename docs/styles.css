@@ -139,7 +139,50 @@ main{max-width:1080px;margin:0 auto;padding:clamp(16px,4vw,32px)}
 .foot{color:var(--muted);font-size:12px;border-top:1px solid var(--hair);padding-top:18px;max-width:72ch}
 .foot strong{color:var(--text)}
 
+/* Fear & Greed */
+.fng-panel{margin-bottom:22px}
+.fng-body{display:flex;align-items:center;gap:clamp(16px,4vw,32px);flex-wrap:wrap}
+.fng-score{display:flex;flex-direction:column;gap:6px;min-width:70px}
+.fng-gauge-wrap{flex:1;min-width:220px}
+.fng-gauge{
+  position:relative;height:32px;border-radius:8px;overflow:visible;
+  background:linear-gradient(90deg,
+    #5BD37E 0%,#91D44A 20%,#FFB000 45%,#FF7A00 70%,#FF5C5C 100%);
+  border:1px solid var(--hair);margin-bottom:8px;
+}
+.fng-gauge__buyzone{
+  position:absolute;left:0;top:0;bottom:0;
+  width:9%;
+  background:rgba(91,211,126,.25);
+  border-right:2px dashed var(--green);
+  border-radius:8px 0 0 8px;
+}
+.fng-gauge__needle{
+  position:absolute;top:-6px;bottom:-6px;left:0%;width:3px;
+  background:#fff;border-radius:2px;
+  box-shadow:0 0 8px rgba(255,255,255,.65);
+  transform:translateX(-50%);
+  transition:left .8s cubic-bezier(.2,.7,.2,1);
+}
+.fng-gauge__ticks{
+  display:flex;justify-content:space-between;
+  font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:3px;
+}
+.fng-gauge__labels{
+  display:flex;justify-content:space-between;
+  font-size:10px;color:#5b6470;
+}
+.fng-gauge__labels span{width:20%;text-align:center}
+.fng-gauge__labels span:first-child{text-align:left}
+.fng-gauge__labels span:last-child{text-align:right}
+.fng-signal{
+  font-family:var(--mono);font-size:11px;font-weight:600;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+}
+.fng-signal--active{color:var(--green)}
+
 @media(prefers-reduced-motion:reduce){
   .gauge__fill{transition:none}
+  .fng-gauge__needle{transition:none}
 }
 :focus-visible{outline:2px solid var(--teal);outline-offset:2px}

@@ -10,6 +10,8 @@ const HALVINGS = [
   { date: "2024-04-20", label: "Halving 2024" },
 ];
 
+const FNG_BUY_THRESHOLD = 9;
+
 const fmtUSD = (n, max = 0) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "USD", maximumFractionDigits: max }).format(n);
 
@@ -43,6 +45,18 @@ async function fetchSpot() {
     const data = await res.json();
     const amount = parseFloat(data?.data?.amount);
     return Number.isFinite(amount) ? amount : null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchFearGreed() {
+  try {
+    const res = await fetch("https://api.alternative.me/fng/?limit=1", { cache: "no-store" });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const entry = data?.data?.[0];
+    return entry ? { value: parseInt(entry.value, 10), classification: entry.value_classification } : null;
   } catch {
     return null;
   }
@@ -85,6 +99,23 @@ function renderCards(rows) {
   setText("updated", "atualizado " + last.date + (last.source === "demo" ? " · DEMO" : ""));
 }
 
+function renderFearGreed(fng) {
+  if (!fng) {
+    setText("fng-value", "—");
+    setText("fng-class", "indisponível");
+    return;
+  }
+  const { value, classification } = fng;
+  setText("fng-value", value);
+  setText("fng-class", classification);
+  document.getElementById("fng-needle").style.left = value + "%";
+  const signal = document.getElementById("fng-signal");
+  if (value <= FNG_BUY_THRESHOLD) {
+    signal.textContent = "ZONA DE COMPRA";
+    signal.classList.add("fng-signal--active");
+  }
+}
+
 function movingAvg(arr, window) {
   return arr.map((_, i) => {
     const start = Math.max(0, i - window + 1);
@@ -106,6 +137,41 @@ function renderChart(rows, candles) {
   // Preco BTC: fecha diario das velas
   const priceMap = new Map((candles || []).map((c) => [c.time, c.close]));
   const btcPrice = labels.map((d) => priceMap.get(d) ?? null);
+
+  const buyZonePlugin = {
+    id: "buyZone",
+    beforeDatasetsDraw(chart) {
+      const { ctx, scales: { x: xScale, y: yScale }, data: { datasets } } = chart;
+      const prices = datasets[0].data;
+      const costs = datasets[1].data;
+      const meta = chart.getDatasetMeta(0);
+      if (!meta.data.length) return;
+      ctx.save();
+      ctx.fillStyle = "rgba(91,211,126,0.15)";
+      let i = 0;
+      while (i < prices.length) {
+        const p = prices[i], c = costs[i];
+        if (p != null && c != null && p < c) {
+          let j = i;
+          while (j < prices.length && prices[j] != null && costs[j] != null && prices[j] < costs[j]) j++;
+          ctx.beginPath();
+          for (let m = i; m < j; m++) {
+            const x = meta.data[m].x, y = yScale.getPixelForValue(costs[m]);
+            m === i ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+          }
+          for (let m = j - 1; m >= i; m--) {
+            ctx.lineTo(meta.data[m].x, yScale.getPixelForValue(prices[m]));
+          }
+          ctx.closePath();
+          ctx.fill();
+          i = j;
+        } else {
+          i++;
+        }
+      }
+      ctx.restore();
+    },
+  };
 
   const halvingPlugin = {
     id: "halvings",
@@ -133,7 +199,7 @@ function renderChart(rows, candles) {
 
   // eslint-disable-next-line no-undef
   new Chart(document.getElementById("costChart"), {
-    plugins: [halvingPlugin],
+    plugins: [buyZonePlugin, halvingPlugin],
     type: "line",
     data: {
       labels,
@@ -258,6 +324,24 @@ function renderLightweightChart(rows, candles) {
   }
 
   const costRows = rows.filter((r) => r.date && r.production_cost_usd);
+
+  // Buy zone strip: verde fino no rodapé quando preço < custo de produção
+  if (candles.length && costRows.length) {
+    const costByDate = new Map(costRows.map((r) => [r.date, parseFloat(r.production_cost_usd)]));
+    const bzData = candles
+      .filter((c) => { const cost = costByDate.get(c.time); return cost != null && c.close < cost; })
+      .map((c) => ({ time: c.time, value: 1, color: "rgba(91,211,126,0.45)" }));
+    if (bzData.length) {
+      const bzSeries = chart.addHistogramSeries({
+        priceFormat: { type: "volume" },
+        priceScaleId: "bz",
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+      chart.priceScale("bz").applyOptions({ scaleMargins: { top: 0.93, bottom: 0 }, visible: false });
+      bzSeries.setData(bzData);
+    }
+  }
   if (costRows.length) {
     const rawVals = costRows.map((r) => parseFloat(r.production_cost_usd));
     const smoothVals = movingAvg(rawVals, 30);
@@ -281,12 +365,13 @@ function renderLightweightChart(rows, candles) {
 
 (async function init() {
   try {
-    const [rows, spot, candles] = await Promise.all([loadSeries(), fetchSpot(), fetchBTCCandles()]);
+    const [rows, spot, candles, fng] = await Promise.all([loadSeries(), fetchSpot(), fetchBTCCandles(), fetchFearGreed()]);
     if (!rows.length) throw new Error("série vazia");
     renderCards(rows);
     renderChart(rows, candles);
     renderLightweightChart(rows, candles);
     renderFloor(parseFloat(rows[rows.length - 1].production_cost_usd), spot);
+    renderFearGreed(fng);
   } catch (err) {
     setText("updated", "erro ao carregar dados");
     setText("cost", "—");
