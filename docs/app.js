@@ -122,20 +122,27 @@ function renderChart(rows) {
 }
 
 async function fetchBTCCandles() {
+  const toCandle = ([ts, o, h, l, c]) => ({
+    time: new Date(ts).toISOString().slice(0, 10),
+    open: parseFloat(o), high: parseFloat(h),
+    low: parseFloat(l), close: parseFloat(c),
+  });
+  const base = "https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=1000";
+  const fiveYearsMs = Date.now() - 5 * 365 * 24 * 60 * 60 * 1000;
   try {
-    const res = await fetch(
-      "https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=365",
-      { cache: "no-store" }
-    );
-    if (!res.ok) return [];
-    const raw = await res.json();
-    return raw.map(([ts, o, h, l, c]) => ({
-      time: new Date(ts).toISOString().slice(0, 10),
-      open: parseFloat(o),
-      high: parseFloat(h),
-      low: parseFloat(l),
-      close: parseFloat(c),
-    }));
+    const r1 = await fetch(`${base}&startTime=${fiveYearsMs}`, { cache: "no-store" });
+    const raw1 = r1.ok ? (await r1.json()).map(toCandle) : [];
+    let raw2 = [];
+    if (raw1.length === 1000) {
+      const nextTs = new Date(raw1[raw1.length - 1].time + "T00:00:00Z").getTime() + 86400000;
+      const r2 = await fetch(`${base}&startTime=${nextTs}`, { cache: "no-store" });
+      raw2 = r2.ok ? (await r2.json()).map(toCandle) : [];
+    }
+    const seen = new Set();
+    return [...raw1, ...raw2].filter((c) => {
+      if (seen.has(c.time)) return false;
+      seen.add(c.time); return true;
+    });
   } catch {
     return [];
   }
