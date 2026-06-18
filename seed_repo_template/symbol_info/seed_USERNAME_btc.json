@@ -1,0 +1,5 @@
+{
+  "symbol": ["BTC_PRODUCTION_COST"],
+  "description": ["BTC Production Cost (energy floor, Cambridge model)"],
+  "pricescale": [100]
+}

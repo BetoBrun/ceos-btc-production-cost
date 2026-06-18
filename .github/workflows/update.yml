@@ -1,0 +1,46 @@
+name: Update BTC Production Cost
+
+on:
+  schedule:
+    # 06:10 UTC todo dia (o CBECI atualiza a cada 24h). Ajuste se quiser.
+    - cron: "10 6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-production-cost
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run updater
+        env:
+          ENERGY_PRICE_USD_KWH: ${{ vars.ENERGY_PRICE_USD_KWH || '0.05' }}
+          CBECI_DATA_URL: ${{ vars.CBECI_DATA_URL || '' }}
+          CBECI_DATE_COL: ${{ vars.CBECI_DATE_COL || 'Date and Time' }}
+          CBECI_POWER_GW_COL: ${{ vars.CBECI_POWER_GW_COL || 'power GW, guess' }}
+        run: python scripts/update_production_cost.py
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [[ -n "$(git status --porcelain docs/data/btc_production_cost.csv)" ]]; then
+            git add docs/data/btc_production_cost.csv
+            git commit -m "data: update BTC production cost ($(date -u +%F))"
+            git push
+          else
+            echo "Sem mudancas no CSV."
+          fi

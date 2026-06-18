@@ -1,0 +1,54 @@
+//@version=5
+// =============================================================================
+// CEOS · BTC Production Cost
+// -----------------------------------------------------------------------------
+// MODO MANUAL (padrao): voce informa o custo de producao atual e a banda
+// Cambridge x Capriole nos inputs. O indicador plota a linha, a banda e dispara
+// alertas quando o PRECO perde / recupera o custo de producao.
+//
+// MODO SEED (opcional, comentado no fim): quando o seu repositorio Pine Seeds
+// (seed_<usuario>_btc) estiver APROVADO e com dados carregados, troque a fonte
+// manual pela serie nativa via request.seed(). Atencao: dados EOD, 1 dia de
+// atraso, e o repo Pine Seeds precisa ser PRIVADO e passar pelo onboarding da
+// TradingView (vide README do template).
+// =============================================================================
+indicator("CEOS · BTC Production Cost", overlay=true)
+
+// ---- Inputs (modo manual) ---------------------------------------------------
+grp = "Modo manual"
+prod_cost   = input.float(55000.0, "Custo de producao (energia) USD", group=grp, tooltip="Ultimo valor do seu CSV / dashboard.")
+band_low    = input.float(48000.0, "Banda inferior (Cambridge)", group=grp)
+band_high   = input.float(70000.0, "Banda superior (Capriole)", group=grp)
+show_band   = input.bool(true, "Mostrar banda Cambridge x Capriole", group=grp)
+
+// ---- Plot -------------------------------------------------------------------
+cost_line = plot(prod_cost, "Custo de producao", color=color.new(color.orange, 0), linewidth=2)
+
+upper = plot(show_band ? band_high : na, "Capriole (sup.)", color=color.new(color.teal, 40))
+lower = plot(show_band ? band_low  : na, "Cambridge (inf.)", color=color.new(color.teal, 40))
+fill(upper, lower, color=show_band ? color.new(color.teal, 90) : na, title="Banda")
+
+// ---- Estado preco x custo ---------------------------------------------------
+below = close < prod_cost
+bgcolor(below ? color.new(color.red, 92) : na, title="Preco abaixo do custo")
+
+lost_cost      = ta.crossunder(close, prod_cost)
+recovered_cost = ta.crossover(close, prod_cost)
+
+plotshape(lost_cost,      title="Perdeu o custo",     style=shape.triangledown, location=location.abovebar, color=color.red,  size=size.tiny)
+plotshape(recovered_cost, title="Recuperou o custo",  style=shape.triangleup,   location=location.belowbar, color=color.green, size=size.tiny)
+
+// ---- Alertas ----------------------------------------------------------------
+alertcondition(lost_cost,      title="BTC perdeu o custo de producao",     message="BTC fechou ABAIXO do custo de producao (energia).")
+alertcondition(recovered_cost, title="BTC recuperou o custo de producao",  message="BTC fechou ACIMA do custo de producao (energia).")
+
+// =============================================================================
+// MODO SEED — descomente quando o repo Pine Seeds estiver ativo e aprovado.
+// Substitua o "seed_SEUUSUARIO_btc" e o simbolo "BTC_PRODUCTION_COST".
+// =============================================================================
+// prod_cost_seed = request.seed("seed_SEUUSUARIO_btc", "BTC_PRODUCTION_COST", close)
+// plot(prod_cost_seed, "Custo (Pine Seeds)", color=color.new(color.orange, 0), linewidth=2)
+// lost_seed      = ta.crossunder(close, prod_cost_seed)
+// recovered_seed = ta.crossover(close, prod_cost_seed)
+// alertcondition(lost_seed,      title="BTC perdeu o custo (seed)",    message="BTC ABAIXO do custo (serie Pine Seeds).")
+// alertcondition(recovered_seed, title="BTC recuperou o custo (seed)", message="BTC ACIMA do custo (serie Pine Seeds).")

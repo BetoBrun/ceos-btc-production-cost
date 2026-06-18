@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CEOS · BTC Production Cost</title>
+  <meta name="description" content="O piso energético do Bitcoin: preço x custo de produção (energia), modelo Cambridge." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand__mark" aria-hidden="true"></span>
+      <span class="brand__name">CEOS</span>
+      <span class="brand__sub">BTC Production Cost</span>
+    </div>
+    <div class="topbar__meta">
+      <span id="updated" class="meta-stamp">carregando…</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- SIGNATURE: o "piso de custo" -->
+    <section class="floor" aria-labelledby="floor-title">
+      <h1 id="floor-title" class="visually-hidden">Preço do BTC versus custo de produção por energia</h1>
+      <div class="floor__grid">
+        <div class="floor__price">
+          <span class="label">BTC à vista</span>
+          <span id="spot" class="readout readout--xl">—</span>
+          <span id="spot-note" class="label label--muted">spot Coinbase</span>
+        </div>
+
+        <div class="floor__gauge" id="gauge">
+          <div class="gauge__bar">
+            <div class="gauge__fill" id="gauge-fill"></div>
+            <div class="gauge__floorline" id="floorline">
+              <span class="gauge__floorlabel">custo de energia</span>
+            </div>
+          </div>
+          <div class="gauge__status">
+            <span id="status-pill" class="pill">—</span>
+            <span id="multiple" class="readout readout--mult">—</span>
+            <span class="label label--muted">preço ÷ custo</span>
+          </div>
+        </div>
+
+        <div class="floor__cost">
+          <span class="label">Custo de produção (energia)</span>
+          <span id="cost" class="readout readout--xl readout--amber">—</span>
+          <span class="label label--muted">por BTC · modelo Cambridge</span>
+        </div>
+      </div>
+      <p class="floor__caveat">
+        Piso <strong>somente de energia</strong>. Não inclui hardware (ASIC), refrigeração,
+        manutenção, taxas de pool nem mão de obra — o custo real do minerador é maior.
+      </p>
+    </section>
+
+    <!-- TradingView -->
+    <section class="panel" aria-labelledby="tv-title">
+      <div class="panel__head">
+        <h2 id="tv-title">BTCUSD · TradingView</h2>
+      </div>
+      <div class="tv-wrap">
+        <div id="tv-chart"></div>
+      </div>
+    </section>
+
+    <!-- Série própria -->
+    <section class="panel" aria-labelledby="own-title">
+      <div class="panel__head">
+        <h2 id="own-title">Custo de produção · série própria</h2>
+        <span class="panel__hint">CSV atualizado diariamente via GitHub Actions</span>
+      </div>
+      <div class="own-chart">
+        <canvas id="costChart" height="320" aria-label="Gráfico do custo de produção do BTC ao longo do tempo"></canvas>
+      </div>
+    </section>
+
+    <!-- Cards -->
+    <section class="cards" aria-label="Indicadores">
+      <article class="card">
+        <span class="card__label">Último custo</span>
+        <span id="card-cost" class="card__value readout--amber">—</span>
+        <span class="card__foot" id="card-cost-date">—</span>
+      </article>
+      <article class="card">
+        <span class="card__label">Consumo anualizado</span>
+        <span id="card-twh" class="card__value">—</span>
+        <span class="card__foot">TWh · média do modelo</span>
+      </article>
+      <article class="card">
+        <span class="card__label">Preço de energia usado</span>
+        <span id="card-price" class="card__value">—</span>
+        <span class="card__foot">US$/kWh · configurável</span>
+      </article>
+      <article class="card">
+        <span class="card__label">Emissão diária</span>
+        <span id="card-issued" class="card__value">—</span>
+        <span class="card__foot">BTC/dia · subsídio</span>
+      </article>
+    </section>
+
+    <footer class="foot">
+      <p>
+        Dados de consumo: Cambridge CBECI (CC BY-NC-SA 4.0). Este painel é informativo
+        e <strong>não é recomendação de investimento</strong>. O "custo de produção" é um
+        modelo de piso energético, não o custo real de mineração nem um alvo de preço.
+      </p>
+    </footer>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://s3.tradingview.com/tv.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

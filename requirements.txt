@@ -1,0 +1,2 @@
+requests is NOT required — usamos apenas a stdlib (urllib).
+# Sem dependencias externas no momento.
