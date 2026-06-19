@@ -6375,3 +6375,4 @@ date,production_cost_usd,power_gw,annualized_twh,energy_price_usd_kwh,btc_issued
 2026-06-16,64372.27,24.140,211.46,0.0500,450.0000,backfill-mempool
 2026-06-17,50671.48,19.002,166.46,0.0500,450.0000,compute-mempool
 2026-06-18,50659.45,18.997,166.42,0.0500,450.0000,compute-mempool
+2026-06-19,62742.01,23.528,206.11,0.0500,450.0000,compute-mempool
